@@ -1,0 +1,23 @@
+*.o
+code/network/nachos
+code/userland/filetest
+code/userland/halt
+code/userland/matmult
+code/userland/shell
+code/userland/sort
+code/userland/tiny shell
+code/userland/*.coff
+code/userland/lib/
+code/userland/mips-dec-ultrix42/*
+code/threads/Makefile.depends
+code/threads/nachos
+code/userprog/Makefile.depends
+code/userprog/nachos
+code/vmem/Makefile.depends
+code/vmem/nachos
+code/bin/coff2flat
+code/bin/coff2noff
+code/bin/disassemble
+code/filesys/Makefile.depends
+code/filesys/nachos
+code/network/Makefile.depends
