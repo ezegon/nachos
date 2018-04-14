@@ -1,4 +1,5 @@
 *.o
+*.bckp
 code/network/nachos
 code/userland/filetest
 code/userland/halt
