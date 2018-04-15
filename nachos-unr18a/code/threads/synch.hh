@@ -23,6 +23,8 @@
 #include "thread.hh"
 #include "lib/list.hh"
 
+class Thread;
+
 
 /// This class defines a “semaphore”, which has a positive integer as its
 /// value.
@@ -109,8 +111,8 @@ private:
     
     Semaphore *mutex;
     
-    const char* threadName;
-
+    Thread *mutexOwner;
+    
     // Add other needed fields here.
 };
 
@@ -177,18 +179,18 @@ private:
 };
 
 class Port {
-
+public:
     Port(const char *portName);
+    ~Port();
     
     void Send(int message);
     void Receive(int *message);
     const char *GetName() const;
     
-    ~Port();
-
 private:
     const char *name;
-    Condition *cond;
+    Condition *waiting_receive;
+    Condition *waiting_send;
     Lock *mutex;
     int buffer;
     bool isMessage;

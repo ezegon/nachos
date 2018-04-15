@@ -24,7 +24,8 @@ utility.o: ../lib/utility.cc ../lib/utility.hh ../machine/system_dep.hh
 thread_test.o: ../threads/thread_test.cc ../threads/system.hh \
  ../threads/thread.hh ../lib/utility.hh ../machine/system_dep.hh \
  ../threads/scheduler.hh ../lib/list.hh ../lib/utility.hh \
- ../machine/interrupt.hh ../machine/statistics.hh ../machine/timer.hh
+ ../machine/interrupt.hh ../machine/statistics.hh ../machine/timer.hh \
+ ../threads/synch.hh
 interrupt.o: ../machine/interrupt.cc ../machine/interrupt.hh \
  ../lib/list.hh ../lib/utility.hh ../machine/system_dep.hh \
  ../threads/system.hh ../threads/thread.hh ../lib/utility.hh \

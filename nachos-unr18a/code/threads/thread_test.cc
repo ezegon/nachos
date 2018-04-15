@@ -12,6 +12,9 @@
 
 
 #include "system.hh"
+#include "synch.hh"
+
+Port main_port("main_port");
 
 
 /// Loop 10 times, yielding the CPU to another ready thread each iteration.
@@ -19,7 +22,34 @@
 /// * `name` points to a string with a thread name, just for debugging
 ///   purposes.
 void
-SimpleThread(void *name_)
+SimpleThread_receiver(void *name_)
+{
+    // Reinterpret arg `name` as a string.
+    char *name = (char *) name_;
+
+    int message = 0;
+
+    // If the lines dealing with interrupts are commented, the code will
+    // behave incorrectly, because printf execution may cause race
+    // conditions.
+    for (unsigned num = 0; num < 10; num++) {
+
+        //IntStatus oldLevel = interrupt->SetLevel(IntOff);
+        DEBUG('s',"Thread '%s' is about to receive a message.\n", name);
+        main_port.Receive(&message);
+
+        printf("*** Thread `%s` is running: iteration %u. Received message: '%d'\n", name, num, message);
+
+        //interrupt->SetLevel(oldLevel);
+        currentThread->Yield();
+    }
+    //IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    printf("!!! Thread `%s` has finished\n", name);
+    //interrupt->SetLevel(oldLevel);
+}
+
+void
+SimpleThread_emiter(void *name_)
 {
     // Reinterpret arg `name` as a string.
     char *name = (char *) name_;
@@ -28,8 +58,13 @@ SimpleThread(void *name_)
     // behave incorrectly, because printf execution may cause race
     // conditions.
     for (unsigned num = 0; num < 10; num++) {
+
+        DEBUG('s',"Thread '%s' is about to send a message.\n", name);
+        main_port.Send(num);
+        
         //IntStatus oldLevel = interrupt->SetLevel(IntOff);
-        printf("*** Thread `%s` is running: iteration %u\n", name, num);
+        printf("*** Thread `%s` is running: iteration %u. Sent message: '%d'\n", name, num, num);
+
         //interrupt->SetLevel(oldLevel);
         currentThread->Yield();
     }
@@ -46,11 +81,13 @@ void
 ThreadTest()
 {
     DEBUG('t', "Entering thread test\n");
-
+    
     char *name = new char[64];
     strncpy(name, "2nd", 64);
-    Thread *newThread = new Thread(name);
-    newThread->Fork(SimpleThread, (void *) name);
-
-    SimpleThread((void *) "1st");
+    Thread *firstThread = new Thread(name);
+    Thread *secondThread = new Thread(name);
+    firstThread->Fork(SimpleThread_emiter, (void *) name);
+    secondThread->Fork(SimpleThread_receiver, (void *) "1st");
+    firstThread->Join();
+    puts("I'm happy waiting. :)");
 }

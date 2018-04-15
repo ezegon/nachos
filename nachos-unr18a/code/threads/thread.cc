@@ -38,12 +38,17 @@ IsThreadStatus(ThreadStatus s)
 /// `Thread::Fork`.
 ///
 /// * `threadName` is an arbitrary string, useful for debugging.
-Thread::Thread(const char *threadName)
+Thread::Thread(const char *threadName, bool joinable)
 {
     name     = threadName;
     stackTop = NULL;
     stack    = NULL;
     status   = JUST_CREATED;
+    willJoin = joinable;
+    if(willJoin)
+        joinPort = new Port(name);
+    else
+        joinPort = NULL;
 #ifdef USER_PROGRAM
     space    = NULL;
 #endif
@@ -159,6 +164,9 @@ Thread::Finish()
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\"\n", GetName());
+    
+    if(willJoin)
+        joinPort->Send(42);
 
     threadToBeDestroyed = currentThread;
     Sleep();  // Invokes `SWITCH`.
@@ -281,6 +289,16 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
     machineState[InitialPCState]  = (HostMemoryAddress) func;
     machineState[InitialArgState] = (HostMemoryAddress) arg;
     machineState[WhenDonePCState] = (HostMemoryAddress) ThreadFinish;
+}
+
+void
+Thread::Join()
+{
+    ASSERT(willJoin);
+    int joinBuffer;
+    joinPort->Receive(&joinBuffer);
+    
+    delete joinPort;
 }
 
 #ifdef USER_PROGRAM

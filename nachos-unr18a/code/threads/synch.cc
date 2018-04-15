@@ -99,7 +99,7 @@ Semaphore::V()
 Lock::Lock(const char *debugName)
 {
     mutex = new Semaphore(debugName, 1);
-    threadName = NULL;
+    mutexOwner = NULL;
 }
 
 Lock::~Lock()
@@ -116,21 +116,25 @@ Lock::GetName() const
 void
 Lock::Acquire()
 {
+    //~ DEBUG('s',"Lock acquired\n");
     mutex->P();
-    threadName = currentThread->GetName();
+    mutexOwner = currentThread;
 }
 
 void
 Lock::Release()
 {
-    mutex->V();
-    threadName = NULL;
+    if(IsHeldByCurrentThread()){
+        //~ DEBUG('s',"Lock released\n");
+        mutex->V();
+        mutexOwner = NULL;
+    }
 }
 
 bool
 Lock::IsHeldByCurrentThread() const
 {
-    return currentThread->GetName() == threadName;
+    return (currentThread == mutexOwner);
 }
 
 Condition::Condition(const char *debugName, Lock *conditionLock)
@@ -160,8 +164,10 @@ Condition::Wait()
     queue->Append(sem);
     
     mutex->Release();
+    //~ DEBUG('s',"Condition '%s' waiting.\n",this->GetName());
     sem->P();
     mutex->Acquire();
+    //~ DEBUG('s',"Condition '%s' awoke.\n",this->GetName());
 }
 
 void
@@ -182,38 +188,57 @@ Port::Port(const char *portName)
 {
     name = portName;
     mutex = new Lock("portMutex");
-    cond = new Condition("portCondition", mutex);
+    waiting_send    = new Condition("sendCondition", mutex);
+    waiting_receive = new Condition("receiveCondition", mutex);
     isMessage = false;
 }
 
 Port::~Port()
 {
-    delete cond;
+    delete waiting_send;
+    delete waiting_receive;
     delete mutex;
 }
 
 void 
 Port::Send(int message)
-{    
-    while(isMessage)
-        cond->Wait();
+{
+    mutex->Acquire();
+    while(isMessage)  // Check to see if there is already a message in the Buffer
+        waiting_send->Wait(); // If there is, then wait until it doesn't matter
     
-    buffer = message;
-    DEBUG('s',"There is a message in buffer");
-    isMessage = true;
-    cond->Wait();
+    //~ DEBUG('s',"Beginning to send a message.\n");
+    
+    buffer = message; // Write the message in the buffer
+    isMessage = true; // Set the flag
+    waiting_receive->Signal(); // Wake up any thread waiting for a message in this port
+    
+    DEBUG('s',"A message has been sent and is awaiting confirmation.\n");
+    
+    waiting_send->Wait(); // Wait until the message is received
+    DEBUG('s',"Message confirmed by sender.\n");
+    mutex->Release();
+    //~ DEBUG('s',"Sender released\n");    
 }
 
 void 
 Port::Receive(int *message)
 {
-    while(!isMessage)
-        cond->Wait();
+    mutex->Acquire();
+    while(!isMessage) // Check to see if there is a message in the Buffer
+        waiting_receive->Wait(); // If there are no messages, then wait for one
         
-    message = &buffer;
-    DEBUG('s',"There is a message has been copied");
-    isMessage = false;
-    cond->Signal();
+    //~ DEBUG('s',"Beginning to receive a message.\n");
+    
+    *message = buffer; // Copy the message to the address received
+    isMessage = false; // Set the flag
+    
+    DEBUG('s',"A message has been received.\n");
+    
+    //~ DEBUG('s',"About to confirm (Signal)\n");
+    waiting_send->Signal(); // Tell the sender that the message was received
+    mutex->Release();
+    //~ DEBUG('s',"Receiver released\n");
 }
     
 const char *

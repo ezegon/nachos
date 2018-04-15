@@ -40,11 +40,14 @@
 
 
 #include "lib/utility.hh"
+#include "synch.hh"
 
 #ifdef USER_PROGRAM
 #include "machine/machine.hh"
 #include "userprog/address_space.hh"
 #endif
+
+class Port;
 
 
 /// CPU register state to be saved on context switch.
@@ -95,7 +98,7 @@ private:
 public:
 
     /// Initialize a `Thread`.
-    Thread(const char *debugName);
+    Thread(const char *debugName, bool joinable = true);
 
     /// Deallocate a Thread.
     ///
@@ -125,6 +128,8 @@ public:
     const char *GetName() const;
 
     void Print() const;
+    
+    void Join();
 
 private:
     // Some of the private data for this class is listed above.
@@ -142,6 +147,10 @@ private:
 
     /// Allocate a stack for thread.  Used internally by `Fork`.
     void StackAllocate(VoidFunctionPtr func, void *arg);
+    
+    Port *joinPort;
+    
+    bool willJoin;
 
 #ifdef USER_PROGRAM
     /// User-level CPU register state.
