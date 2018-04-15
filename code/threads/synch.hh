@@ -112,11 +112,7 @@ private:
     Semaphore *mutex;
     
     Thread *mutexOwner;
-<<<<<<< HEAD:nachos-unr18a/code/threads/synch.hh
     
-=======
-
->>>>>>> master:code/threads/synch.hh
     // Add other needed fields here.
 };
 

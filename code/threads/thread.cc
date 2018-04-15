@@ -38,26 +38,19 @@ IsThreadStatus(ThreadStatus s)
 /// `Thread::Fork`.
 ///
 /// * `threadName` is an arbitrary string, useful for debugging.
-<<<<<<< HEAD:nachos-unr18a/code/threads/thread.cc
-Thread::Thread(const char *threadName, bool joinable)
-=======
-Thread::Thread(const char *threadName, unsigned int _priority = 0)
->>>>>>> master:code/threads/thread.cc
+Thread::Thread(const char *threadName, unsigned int _priority, bool joinable)
 {
     name     = threadName;
     stackTop = NULL;
     stack    = NULL;
     status   = JUST_CREATED;
-<<<<<<< HEAD:nachos-unr18a/code/threads/thread.cc
     willJoin = joinable;
     if(willJoin)
         joinPort = new Port(name);
     else
         joinPort = NULL;
-=======
     priority = _priority;
     staticPriority = _priority;
->>>>>>> master:code/threads/thread.cc
 #ifdef USER_PROGRAM
     space    = NULL;
 #endif
@@ -161,7 +154,7 @@ Thread::GetStaticPriority()
     return staticPriority;
 }
 
-unsigned int
+void
 Thread::SetPriority(unsigned int _priority)
 {
     priority = _priority;

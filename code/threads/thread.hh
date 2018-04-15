@@ -98,11 +98,7 @@ private:
 public:
 
     /// Initialize a `Thread`.
-<<<<<<< HEAD:nachos-unr18a/code/threads/thread.hh
-    Thread(const char *debugName, bool joinable = true);
-=======
-    Thread(const char *debugName, unsigned int priority = 2);
->>>>>>> master:code/threads/thread.hh
+    Thread(const char *debugName, unsigned int priority = 2, bool joinable = true);
 
     /// Deallocate a Thread.
     ///

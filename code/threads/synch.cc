@@ -116,13 +116,10 @@ Lock::GetName() const
 void
 Lock::Acquire()
 {
-<<<<<<< HEAD:nachos-unr18a/code/threads/synch.cc
     //~ DEBUG('s',"Lock acquired\n");
-=======
     if(mutexOwner != NULL)
         if(currentThread->GetPriority() > mutexOwner->GetPriority())
             mutexOwner->SetPriority(currentThread->GetPriority());
->>>>>>> master:code/threads/synch.cc
     mutex->P();
     mutexOwner = currentThread;
 }
@@ -130,14 +127,10 @@ Lock::Acquire()
 void
 Lock::Release()
 {
-<<<<<<< HEAD:nachos-unr18a/code/threads/synch.cc
-    if(IsHeldByCurrentThread()){
-        //~ DEBUG('s',"Lock released\n");
-=======
+    //~ DEBUG('s',"Lock released\n");
     if(IsHeldByCurrentThread())
     {
         currentThread->SetPriority(currentThread->GetStaticPriority());
->>>>>>> master:code/threads/synch.cc
         mutex->V();
         mutexOwner = NULL;
     }

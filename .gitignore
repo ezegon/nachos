@@ -22,3 +22,4 @@ code/bin/disassemble
 code/filesys/Makefile.depends
 code/filesys/nachos
 code/network/Makefile.depends
+nachos-unr18a/
