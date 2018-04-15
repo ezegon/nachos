@@ -109,7 +109,7 @@ private:
     
     Semaphore *mutex;
     
-    const char* threadName;
+    Thread *mutexOwner;
 
     // Add other needed fields here.
 };

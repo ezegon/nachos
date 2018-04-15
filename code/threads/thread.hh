@@ -95,7 +95,7 @@ private:
 public:
 
     /// Initialize a `Thread`.
-    Thread(const char *debugName);
+    Thread(const char *debugName, unsigned int priority = 2);
 
     /// Deallocate a Thread.
     ///
@@ -123,6 +123,12 @@ public:
     void SetStatus(ThreadStatus st);
 
     const char *GetName() const;
+    
+    unsigned int GetPriority();
+    
+    unsigned int GetStaticPriority();
+    
+    void SetPriority(unsigned int priority);
 
     void Print() const;
 
@@ -139,6 +145,11 @@ private:
     ThreadStatus status;
 
     const char *name;
+    
+    //Priority in the scheduler 0-Low 1-Medium 2-High
+    unsigned int priority;
+    
+    unsigned int staticPriority;
 
     /// Allocate a stack for thread.  Used internally by `Fork`.
     void StackAllocate(VoidFunctionPtr func, void *arg);

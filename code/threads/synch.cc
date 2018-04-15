@@ -99,7 +99,7 @@ Semaphore::V()
 Lock::Lock(const char *debugName)
 {
     mutex = new Semaphore(debugName, 1);
-    threadName = NULL;
+    mutexOwner = NULL;
 }
 
 Lock::~Lock()
@@ -116,21 +116,28 @@ Lock::GetName() const
 void
 Lock::Acquire()
 {
+    if(mutexOwner != NULL)
+        if(currentThread->GetPriority() > mutexOwner->GetPriority())
+            mutexOwner->SetPriority(currentThread->GetPriority());
     mutex->P();
-    threadName = currentThread->GetName();
+    mutexOwner = currentThread;
 }
 
 void
 Lock::Release()
 {
-    mutex->V();
-    threadName = NULL;
+    if(IsHeldByCurrentThread())
+    {
+        currentThread->SetPriority(currentThread->GetStaticPriority());
+        mutex->V();
+        mutexOwner = NULL;
+    }
 }
 
 bool
 Lock::IsHeldByCurrentThread() const
 {
-    return currentThread->GetName() == threadName;
+    return (currentThread == mutexOwner);
 }
 
 Condition::Condition(const char *debugName, Lock *conditionLock)

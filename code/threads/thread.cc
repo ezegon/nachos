@@ -38,12 +38,14 @@ IsThreadStatus(ThreadStatus s)
 /// `Thread::Fork`.
 ///
 /// * `threadName` is an arbitrary string, useful for debugging.
-Thread::Thread(const char *threadName)
+Thread::Thread(const char *threadName, unsigned int _priority = 0)
 {
     name     = threadName;
     stackTop = NULL;
     stack    = NULL;
     status   = JUST_CREATED;
+    priority = _priority;
+    staticPriority = _priority;
 #ifdef USER_PROGRAM
     space    = NULL;
 #endif
@@ -133,6 +135,24 @@ const char *
 Thread::GetName() const
 {
     return name;
+}
+
+unsigned int
+Thread::GetPriority()
+{
+    return priority;
+}
+
+unsigned int
+Thread::GetStaticPriority()
+{
+    return staticPriority;
+}
+
+unsigned int
+Thread::SetPriority(unsigned int _priority)
+{
+    priority = _priority;
 }
 
 void
