@@ -63,6 +63,8 @@ const unsigned MACHINE_STATE_SIZE = 17;
 /// WATCH OUT IF THIS IS NOT BIG ENOUGH!!!!!
 const unsigned STACK_SIZE = 4 * 1024;
 
+unsigned int MAX_THREAD_PRIORITY = 2;
+
 
 /// Thread state.
 enum ThreadStatus {

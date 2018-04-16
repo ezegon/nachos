@@ -14,6 +14,7 @@
 #include "thread.hh"
 #include "lib/list.hh"
 
+unsigned int SCHEDULER_PRIORITY = MAX_THREAD_PRIORITY + 1;
 
 /// The following class defines the scheduler/dispatcher abstraction --
 /// the data structures and operations needed to keep track of which

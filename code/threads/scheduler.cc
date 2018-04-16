@@ -25,13 +25,13 @@
 /// Initialize the list of ready but not running threads to empty.
 Scheduler::Scheduler()
 {
-    readyList = new List<Thread *>[3];
+    readyList = new List<Thread *>[SCHEDULER_PRIORITY_NUMBER];
 }
 
 /// De-allocate the list of ready threads.
 Scheduler::~Scheduler()
 {
-    delete readyList;
+    delete [] readyList;
 }
 
 /// Mark a thread as ready, but not running.
@@ -57,7 +57,7 @@ Scheduler::ReadyToRun(Thread *thread)
 Thread *
 Scheduler::FindNextToRun()
 {
-    for(int i = 2; i>=0 ; i--)
+    for(int i = (int)MAX_THREAD_PRIORITY; i>=0 ; i--)
         if(!readyList[i].IsEmpty())
             return readyList[i].Pop();
     return NULL;
