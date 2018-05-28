@@ -9,9 +9,58 @@
 const unsigned MAX_ARG_COUNT  = 32;
 const unsigned MAX_ARG_LENGTH = 128;
 
-void ReadStringFromUser(int userAddress, char *outString,
-                        unsigned maxByteCount);
-void WriteStringToUser(const char *string, int userAddress);
+void
+ReadStringFromUser(int userAddress, char *outString, unsigned maxByteCount)
+{
+    unsigned i = 0;
+    int c;
+    do
+    {
+        machine->ReadMem(userAddress + i, 1, &c);
+        *(outstring + i) = c;
+        i++;
+    } while ( c != '\0' && i < maxByteCount);
+}
+
+void 
+WriteStringToUser(const char *string, int userAddress)
+{
+    unsigned size = sizeof(string) / sizeof(char);
+    unsigned i = 0
+    while (size >= 1)
+    {
+        machine->WriteMem(userAddress + i, 1, string[i]); // Tendria que castear aca?
+        i += 1;
+        size -= 1;
+    };
+    machine->WriteMem(userAddress + i, size, string); // Y aca?
+}
+
+void 
+ReadBufferFromUser(int userAddress, char *outBuffer, unsigned byteCount)
+{
+    unsigned i = 0;
+    int c;
+    do
+    {
+        machine->ReadMem(userAddress + i, 1, &c)
+        *(outBuffer + i) = c;
+        i += 1;
+    } while (i <= byteCount);
+}
+
+void 
+WriteBufferToUser(const char *buffer, int userAddress, unsigned byteCount)
+{
+    unsigned size = sizeof(buffer) / sizeof(char);
+    unsigned i = 0;
+    while (size >= 1)
+    {
+        machine->WriteMem(userAddress + i, 1, buffer[i]); // Tendria que castear aca?
+        i += 1;
+        size -= 1;
+    };
+}
 
 void
 WriteArgs(char **args)
