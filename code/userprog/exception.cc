@@ -21,7 +21,7 @@
 /// All rights reserved.  See `copyright.h` for copyright notice and
 /// limitation of liability and disclaimer of warranty provisions.
 
-
+#include <string.h>
 #include "syscall.h"
 #include "args.cc"
 #include "threads/system.hh"
@@ -67,16 +67,16 @@ ExceptionHandler(ExceptionType which)
                     char name[256];
                     ReadStringFromUser(fname, name, 256);
                     fileSystem->Create(name,0);
+                    IncreasePC();
+                    break;
                 }
-                IncreasePC();
-                break;
 
             case SC_Read:
                 {
                     int from = machine->ReadRegister(4);
                     int size = machine->ReadRegister(5);
                     OpenFileId id = machine->ReadRegister(6);
-                    char buffer[size];
+                    char *buffer = new char[size];
                     int readLength = 0;
 
                     if(id == ConsoleInput) {
@@ -85,14 +85,20 @@ ExceptionHandler(ExceptionType which)
                         {
                             buffer[i] = synchConsole->GetChar();
                         }
-                        WriteBufferToUser(buffer, from, size);
+                        WriteBufferToUser((const char*)buffer, from, size);
                         readLength = i;
+                    } else if(id >= 0) {
+                        OpenFile *f = currentThread->GetFile(id);
+                        if(f != NULL) {
+                            readLength = f->Read(buffer, size);
+                            WriteBufferToUser((const char*)buffer, from, size);
+                        }
                     }
 
                     machine->WriteRegister(2, readLength);
+                    IncreasePC();
+                    break;
                 }
-                IncreasePC();
-                break;
 
             case SC_Write:
                 {
@@ -110,11 +116,17 @@ ExceptionHandler(ExceptionType which)
                             synchConsole->PutChar(buffer[i]);
                         }
                         writeLength = i;
+                    } else {
+                        OpenFile *f = currentThread->GetFile(id);
+                        if(f != NULL) {
+                            ReadBufferFromUser(from, buffer, size);
+                            writeLength = f->Write((const char*)buffer, size);
+                        }
                     }
                     machine->WriteRegister(2, writeLength);
+                    IncreasePC();
+                    break;
                 }
-                IncreasePC();
-                break;
 
             case SC_Open:
                 {
@@ -122,33 +134,33 @@ ExceptionHandler(ExceptionType which)
                     char name[256];
                     ReadStringFromUser(pname, name, 256);
                     OpenFile *file = fileSystem->Open(name);
-                    OpenFileId fid = -1;
+                    OpenFileId fid = 0;
 
                     if(file != NULL) {
                         fid = currentThread->AddFile(file);
                         if(fid < 0)
                             delete file;
                     }
+                    IncreasePC();
+                    break;
                 }
-                IncreasePC();
-                break;
 
             case SC_Close:
                 {
                     int fid = machine->ReadRegister(4);
                     currentThread->RemoveFile(fid);
+                    IncreasePC();
+                    break;
                 }
-                IncreasePC();
-                break;
 
              case SC_Exit:
                 {
                     int status = machine->ReadRegister(4);
                     currentThread->RemoveAllFiles();
                     currentThread->Finish(status);
+                    IncreasePC();
+                    break;
                 }
-                IncreasePC();
-                break;
 
             case SC_Join:
                 {
@@ -156,30 +168,31 @@ ExceptionHandler(ExceptionType which)
                     Thread *thread = pTable->Get(pid);
                     thread->Join();
                     machine->WriteRegister(2, 0);
+                    IncreasePC();
+                    break;
                 }
-                IncreasePC();
-                break;
 
             case SC_Exec:
                 {
                     int pname = machine->ReadRegister(4);
                     int pargs = machine->ReadRegister(5);
                     char name[256];
+                    ASSERT(name != NULL);
                     ReadStringFromUser(pname, name, 256);
                     OpenFile *file = fileSystem->Open(name);
-                    SpaceId sid = -1;
-                    if(file != NULL) {
-                        Thread *t = new Thread(strdup(name));
-                        AddressSpace *as = new AddressSpace(file);
-                        t->space = as;
-                        sid = t->GetSid();
-                        char **args = SaveArgs(pargs);
-                        t->Fork(InitUserProc, args);
-                    }
+                    SpaceId sid = 0;
+                    ASSERT(file != NULL);
+                    Thread *t = new Thread(strdup(name));
+                    AddressSpace *as = new AddressSpace(file);
+                    delete file;
+                    t->space = as;
+                    sid = t->GetSid();
+                    char **args = SaveArgs(pargs);
+                    t->Fork(InitUserProc, args);
                     machine->WriteRegister(2, sid);
+                    IncreasePC();
+                    break;
                 }
-                IncreasePC();
-                break;
 
             default:
                 {

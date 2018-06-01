@@ -148,6 +148,8 @@ public:
 
     void RemoveAllFiles();
 
+    OpenFile *GetFile(int id);
+
     int GetSid();
 
 private:

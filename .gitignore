@@ -1,5 +1,6 @@
 *.o
 *.bckp
+*.gch
 code/network/nachos
 code/userland/filetest
 code/userland/halt

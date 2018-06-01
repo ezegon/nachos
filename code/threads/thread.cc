@@ -189,6 +189,13 @@ Thread::RemoveAllFiles()
         table->Remove(i);
 }
 
+OpenFile*
+Thread::GetFile(int id)
+{
+    ASSERT(table->HasKey(id));
+    return table->Get(id);
+}
+
 void
 Thread::Print() const
 {
