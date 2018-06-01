@@ -37,6 +37,9 @@ SynchDisk *synchDisk;
 #ifdef USER_PROGRAM  // Requires either *FILESYS* or *FILESYS_STUB*.
 #include "userprog/debugger.hh"
 Machine *machine;  ///< User program memory and registers.
+BitMap *vPages;
+Table<Thread*> *pTable;
+SynchConsole *synchConsole;
 #endif
 
 #ifdef NETWORK
@@ -159,9 +162,22 @@ Initialize(int argc, char **argv)
 
     threadToBeDestroyed = NULL;
 
+    #ifdef USER_PROGRAM
+        Debugger *d = debugUserProg ? new Debugger : NULL;
+        DEBUG('i', "Creating machine instance\n");
+        machine = new Machine(d);  // This must come first.
+        DEBUG('i', "Creating virtual pages instance\n");
+        vPages = new BitMap(NUM_PHYS_PAGES);
+        DEBUG('i', "Creating process table instance\n");
+        pTable = new Table<Thread*>();
+        DEBUG('i', "Creating console instance\n");
+        synchConsole = new SynchConsole(NULL, NULL);
+    #endif
+
     // We did not explicitly allocate the current thread we are running in.
     // But if it ever tries to give up the CPU, we better have a `Thread`
     // object to save its state.
+    DEBUG('i', "Creating main instance\n");
     currentThread = new Thread("main");
     currentThread->SetStatus(RUNNING);
 
@@ -173,11 +189,6 @@ Initialize(int argc, char **argv)
         preemptiveScheduler = new PreemptiveScheduler();
         preemptiveScheduler->SetUp(timeSlice);
     }
-
-#ifdef USER_PROGRAM
-    Debugger *d = debugUserProg ? new Debugger : NULL;
-    machine = new Machine(d);  // This must come first.
-#endif
 
 #ifdef FILESYS
     synchDisk = new SynchDisk("DISK");
@@ -207,6 +218,9 @@ Cleanup()
 
 #ifdef USER_PROGRAM
     delete machine;
+    delete synchConsole;
+    delete vPages;
+    delete pTable;
 #endif
 
 #ifdef FILESYS_NEEDED

@@ -3,7 +3,8 @@
 /// limitation of liability and disclaimer of warranty provisions.
 
 
-#include "machine/machine.h"
+#include "machine/machine.hh"
+#include "threads/system.hh"
 
 
 const unsigned MAX_ARG_COUNT  = 32;
@@ -17,39 +18,37 @@ ReadStringFromUser(int userAddress, char *outString, unsigned maxByteCount)
     do
     {
         machine->ReadMem(userAddress + i, 1, &c);
-        *(outstring + i) = c;
+        *(outString + i) = c;
         i++;
     } while ( c != '\0' && i < maxByteCount);
 }
 
-void 
+void
 WriteStringToUser(const char *string, int userAddress)
 {
-    unsigned size = sizeof(string) / sizeof(char);
-    unsigned i = 0
-    while (size >= 1)
+    unsigned i = 0;
+    while (string[i] != '\0')
     {
         machine->WriteMem(userAddress + i, 1, string[i]); // Tendria que castear aca?
-        i += 1;
-        size -= 1;
-    };
-    machine->WriteMem(userAddress + i, size, string); // Y aca?
+        i++;
+    }
+    machine->WriteMem(userAddress + i, 1, '\0'); // Y aca?
 }
 
-void 
+void
 ReadBufferFromUser(int userAddress, char *outBuffer, unsigned byteCount)
 {
     unsigned i = 0;
     int c;
     do
     {
-        machine->ReadMem(userAddress + i, 1, &c)
-        *(outBuffer + i) = c;
+        machine->ReadMem(userAddress + i, 1, &c);
+        outBuffer[i]= c;
         i += 1;
     } while (i <= byteCount);
 }
 
-void 
+void
 WriteBufferToUser(const char *buffer, int userAddress, unsigned byteCount)
 {
     unsigned size = sizeof(buffer) / sizeof(char);
@@ -72,7 +71,7 @@ WriteArgs(char **args)
     // Start writing the arguments where the current SP points.
     int args_address[MAX_ARG_COUNT];
     unsigned i;
-    int sp = machine->ReadRegister(StackReg);
+    int sp = machine->ReadRegister(STACK_REG);
     for (i = 0; i < MAX_ARG_COUNT; i++) {
         if (args[i] == NULL)        // If the last was reached, terminate.
             break;
@@ -85,6 +84,10 @@ WriteArgs(char **args)
 
     sp -= sp % 4;     // Align the stack to a multiple of four.
     sp -= i * 4 + 4;  // Make room for the array and the trailing NULL.
+
+    machine->WriteRegister(4, i);
+    machine->WriteRegister(5, sp);
+
     for (unsigned j = 0; j < i; j++)
         // Save the address of the j-th argument counting from the end down
         // to the beginning.
@@ -92,7 +95,7 @@ WriteArgs(char **args)
     machine->WriteMem(sp + 4 * i, 4, 0);  // The last is NULL.
     sp -= 16;  // Make room for the “register saves”.
 
-    machine->WriteRegister(StackReg, sp);
+    machine->WriteRegister(STACK_REG, sp);
     delete args;  // Free the array.
 }
 

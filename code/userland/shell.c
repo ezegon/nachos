@@ -10,10 +10,9 @@
 static inline unsigned
 strlen(const char *s)
 {
-    // TO DO: how to make sure that `s` is not `NULL`?
-
     unsigned i;
-    for (i = 0; s[i] != '\0'; i++);
+    if(s != NULL)
+        for (i = 0; s[i] != '\0'; i++);
     return i;
 }
 
@@ -27,30 +26,28 @@ WritePrompt(OpenFileId output)
 static inline void
 WriteError(const char *description, OpenFileId output)
 {
-    // TO DO: how to make sure that `description` is not `NULL`?
-
     static const char PREFIX[] = "Error: ";
     static const char SUFFIX[] = "\n";
-
-    Write(PREFIX, sizeof PREFIX - 1, output);
-    Write(description, strlen(description), output);
-    Write(SUFFIX, sizeof SUFFIX - 1, output);
+    if(description != NULL) {
+        Write(PREFIX, sizeof PREFIX - 1, output);
+        Write(description, strlen(description), output);
+        Write(SUFFIX, sizeof SUFFIX - 1, output);
+    }
 }
 
 static unsigned
 ReadLine(char *buffer, unsigned size, OpenFileId input)
 {
-    // TO DO: how to make sure that `buffer` is not `NULL`?
-
     unsigned i;
-
-    for (i = 0; i < size; i++) {
-        Read(&buffer[i], 1, input);
-        // TO DO: what happens when the input ends?
-        if (buffer[i] == '\n') {
-            buffer[i] = '\0';
-            break;
+    if(buffer != NULL) {
+        for (i = 0; i < size; i++) {
+            Read(&buffer[i], 1, input);
+            if (buffer[i] == '\n' || buffer[i] == '\0') {
+                i--;
+                break;
+            }
         }
+        buffer[i+1] = '\0';
     }
     return i;
 }
@@ -79,13 +76,18 @@ PrepareArguments(char *line, char **argv, unsigned argvSize)
     //
     // TO DO: what if the user wants to include a space as part of an
     //        argument?
-    for (unsigned i = 0; line[i] != '\0'; i++)
+    unsigned i = 0;
+    for (; line[i] != '\0'; i++)
         if (line[i] == ARG_SEPARATOR) {
             if (argCount == argvSize - 1)
                 // The maximum of allowed arguments is exceeded, and
                 // therefore the size of `argv` is too.  Note that 1 is
                 // decreased in order to leave space for the NULL at the end.
                 return 0;
+
+            while(line[i+1] == ARG_SEPARATOR)
+                i++;
+
             line[i] = '\0';
             argv[argCount] = &line[i + 1];
             argCount++;
@@ -100,14 +102,25 @@ main(void)
 {
     const OpenFileId INPUT  = ConsoleInput;
     const OpenFileId OUTPUT = ConsoleOutput;
-    char             line[MAX_LINE_SIZE];
-    char            *argv[MAX_ARG_COUNT];
+    char  line[MAX_LINE_SIZE];
+    char  *argv[MAX_ARG_COUNT];
 
     for (;;) {
         WritePrompt(OUTPUT);
         const unsigned lineSize = ReadLine(line, MAX_LINE_SIZE, INPUT);
-        if (lineSize == 0)
+        if (lineSize <= 0)
             continue;
+
+        char *line_;
+        int bg;
+
+        if(line[0] == '&') {
+            bg = 1;
+            line_ = line + 2*sizeof(char);
+        } else {
+            bg = 0;
+            line_ = line;
+        }
 
         if (PrepareArguments(line, argv, MAX_ARG_COUNT) == 0) {
             WriteError("too many arguments.", OUTPUT);
@@ -116,18 +129,16 @@ main(void)
 
         // Comment and uncomment according to whether command line arguments
         // are given in the system call or not.
-        const SpaceId newProc = Exec(line);
-        //const SpaceId newProc = Exec(line, argv);
+        const SpaceId newProc = Exec(line_, argv);
 
-        // TO DO: check for errors when calling `Exec`; this depends on how
-        //        errors are reported.
-
-        Join(newProc);
-        // TO DO: is it necessary to check for errors after `Join` too, or
-        //        can you be sure that, with the implementation of the system
-        //        call handler you made, it will never give an error?; what
-        //        happens if tomorrow the implementation changes and new
-        //        error conditions appear?
+        if(newProc > 0) {
+            if(!bg) {
+                if(Join(newProc) < 0)
+                    WriteError("Join failed or program exit with error", OUTPUT);
+            }
+        } else {
+            WriteError("process execution error.", OUTPUT);
+        }
     }
 
     return 0;  // Never reached.

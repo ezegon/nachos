@@ -44,15 +44,24 @@ Thread::Thread(const char *threadName, unsigned int _priority, bool joinable)
     stackTop = NULL;
     stack    = NULL;
     status   = JUST_CREATED;
+
     willJoin = joinable;
     if(willJoin)
         joinPort = new Port(name);
     else
         joinPort = NULL;
+
     priority = _priority;
     staticPriority = _priority;
+
 #ifdef USER_PROGRAM
     space    = NULL;
+
+    table = new Table<OpenFile *>();
+    table->Add(NULL);
+    table->Add(NULL);
+
+    sid = pTable->Add(this);
 #endif
 }
 
@@ -160,6 +169,26 @@ Thread::SetPriority(unsigned int _priority)
     priority = _priority;
 }
 
+OpenFileId
+Thread::AddFile(OpenFile *f)
+{
+    return table->Add(f);
+}
+
+void
+Thread::RemoveFile(OpenFileId fid)
+{
+    ASSERT(table->HasKey(fid));
+    table->Remove(fid);
+}
+
+void
+Thread::RemoveAllFiles()
+{
+    for(int i = 0; !table->IsEmpty(); i++)
+        table->Remove(i);
+}
+
 void
 Thread::Print() const
 {
@@ -178,15 +207,15 @@ Thread::Print() const
 /// NOTE: we disable interrupts, so that we do not get a time slice between
 /// setting `threadToBeDestroyed`, and going to sleep.
 void
-Thread::Finish()
+Thread::Finish(int st)
 {
     interrupt->SetLevel(INT_OFF);
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\"\n", GetName());
-    
+
     if(willJoin)
-        joinPort->Send(42);
+        joinPort->Send(st);
 
     threadToBeDestroyed = currentThread;
     Sleep();  // Invokes `SWITCH`.
@@ -317,8 +346,14 @@ Thread::Join()
     ASSERT(willJoin);
     int joinBuffer;
     joinPort->Receive(&joinBuffer);
-    
+
     delete joinPort;
+}
+
+int
+Thread::GetSid()
+{
+    return sid;
 }
 
 #ifdef USER_PROGRAM

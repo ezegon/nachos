@@ -40,7 +40,10 @@
 
 
 #include "lib/utility.hh"
+#include "lib/table.hh"
 #include "synch.hh"
+#include "filesys/open_file.hh"
+#include "userprog/syscall.h"
 
 #ifdef USER_PROGRAM
 #include "machine/machine.hh"
@@ -63,7 +66,7 @@ const unsigned MACHINE_STATE_SIZE = 17;
 /// WATCH OUT IF THIS IS NOT BIG ENOUGH!!!!!
 const unsigned STACK_SIZE = 4 * 1024;
 
-unsigned int MAX_THREAD_PRIORITY = 2;
+#define MAX_THREAD_PRIORITY 2
 
 
 /// Thread state.
@@ -120,7 +123,7 @@ public:
     void Sleep();
 
     /// The thread is done executing.
-    void Finish();
+    void Finish(int status = 0);
 
     /// Check if thread has overflowed its stack.
     void CheckOverflow() const;
@@ -128,16 +131,24 @@ public:
     void SetStatus(ThreadStatus st);
 
     const char *GetName() const;
-    
+
     unsigned int GetPriority();
-    
+
     unsigned int GetStaticPriority();
-    
+
     void SetPriority(unsigned int priority);
 
     void Print() const;
-    
+
     void Join();
+
+    OpenFileId AddFile(OpenFile *f);
+
+    void RemoveFile(OpenFileId fid);
+
+    void RemoveAllFiles();
+
+    int GetSid();
 
 private:
     // Some of the private data for this class is listed above.
@@ -152,18 +163,22 @@ private:
     ThreadStatus status;
 
     const char *name;
-    
+
     //Priority in the scheduler 0-Low 1-Medium 2-High
     unsigned int priority;
-    
+
     unsigned int staticPriority;
 
     /// Allocate a stack for thread.  Used internally by `Fork`.
     void StackAllocate(VoidFunctionPtr func, void *arg);
-    
+
     Port *joinPort;
-    
+
     bool willJoin;
+
+    Table<OpenFile *> *table;
+
+    int sid;
 
 #ifdef USER_PROGRAM
     /// User-level CPU register state.

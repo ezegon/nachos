@@ -23,7 +23,11 @@
 
 
 #include "syscall.h"
+#include "args.cc"
 #include "threads/system.hh"
+
+void IncreasePC();
+void InitUserProc(void *);
 
 
 /// Entry point into the Nachos kernel.  Called when a user program is
@@ -49,11 +53,162 @@ ExceptionHandler(ExceptionType which)
 {
     int type = machine->ReadRegister(2);
 
-    if (which == SYSCALL_EXCEPTION && type == SC_Halt) {
-        DEBUG('a', "Shutdown, initiated by user program.\n");
-        interrupt->Halt();
+    if (which == SYSCALL_EXCEPTION) {
+        switch (type)
+        {
+            case SC_Halt:
+                DEBUG('a', "Shutdown, initiated by user program.\n");
+                interrupt->Halt();
+                break;
+
+            case SC_Create:
+                {
+                    int fname = machine->ReadRegister(4);
+                    char name[256];
+                    ReadStringFromUser(fname, name, 256);
+                    fileSystem->Create(name,0);
+                }
+                IncreasePC();
+                break;
+
+            case SC_Read:
+                {
+                    int from = machine->ReadRegister(4);
+                    int size = machine->ReadRegister(5);
+                    OpenFileId id = machine->ReadRegister(6);
+                    char buffer[size];
+                    int readLength = 0;
+
+                    if(id == ConsoleInput) {
+                        unsigned i;
+                        for(i = 0; i < size; i++)
+                        {
+                            buffer[i] = synchConsole->GetChar();
+                        }
+                        WriteBufferToUser(buffer, from, size);
+                        readLength = i;
+                    }
+
+                    machine->WriteRegister(2, readLength);
+                }
+                IncreasePC();
+                break;
+
+            case SC_Write:
+                {
+                    int from = machine->ReadRegister(4);
+                    int size = machine->ReadRegister(5);
+                    OpenFileId id = machine->ReadRegister(6);
+                    int writeLength = 0;
+                    char buffer[size];
+
+                    if(id == ConsoleOutput) {
+                        unsigned i;
+                        ReadBufferFromUser(from, buffer, size);
+                        for(i = 0; i < size; i++)
+                        {
+                            synchConsole->PutChar(buffer[i]);
+                        }
+                        writeLength = i;
+                    }
+                    machine->WriteRegister(2, writeLength);
+                }
+                IncreasePC();
+                break;
+
+            case SC_Open:
+                {
+                    int pname = machine->ReadRegister(4);
+                    char name[256];
+                    ReadStringFromUser(pname, name, 256);
+                    OpenFile *file = fileSystem->Open(name);
+                    OpenFileId fid = -1;
+
+                    if(file != NULL) {
+                        fid = currentThread->AddFile(file);
+                        if(fid < 0)
+                            delete file;
+                    }
+                }
+                IncreasePC();
+                break;
+
+            case SC_Close:
+                {
+                    int fid = machine->ReadRegister(4);
+                    currentThread->RemoveFile(fid);
+                }
+                IncreasePC();
+                break;
+
+             case SC_Exit:
+                {
+                    int status = machine->ReadRegister(4);
+                    currentThread->RemoveAllFiles();
+                    currentThread->Finish(status);
+                }
+                IncreasePC();
+                break;
+
+            case SC_Join:
+                {
+                    SpaceId pid = machine->ReadRegister(4);
+                    Thread *thread = pTable->Get(pid);
+                    thread->Join();
+                    machine->WriteRegister(2, 0);
+                }
+                IncreasePC();
+                break;
+
+            case SC_Exec:
+                {
+                    int pname = machine->ReadRegister(4);
+                    int pargs = machine->ReadRegister(5);
+                    char name[256];
+                    ReadStringFromUser(pname, name, 256);
+                    OpenFile *file = fileSystem->Open(name);
+                    SpaceId sid = -1;
+                    if(file != NULL) {
+                        Thread *t = new Thread(strdup(name));
+                        AddressSpace *as = new AddressSpace(file);
+                        t->space = as;
+                        sid = t->GetSid();
+                        char **args = SaveArgs(pargs);
+                        t->Fork(InitUserProc, args);
+                    }
+                    machine->WriteRegister(2, sid);
+                }
+                IncreasePC();
+                break;
+
+            default:
+                {
+                    printf("Unkown syscall %d\n",type);
+                    ASSERT(false);
+                }
+        }
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
+        printf("%d\n", SYSCALL_EXCEPTION);
         ASSERT(false);
     }
+}
+
+void IncreasePC()
+{
+    int pc = machine->ReadRegister(PC_REG);
+    machine->WriteRegister(PREV_PC_REG, pc);
+    pc = machine->ReadRegister(NEXT_PC_REG);
+    machine->WriteRegister(PC_REG, pc);
+    pc += 4;
+    machine->WriteRegister(NEXT_PC_REG, pc);
+}
+
+void InitUserProc(void *args)
+{
+    currentThread->space->InitRegisters();
+    currentThread->space->RestoreState();
+
+    WriteArgs((char**) args);
+    machine->Run();
 }
