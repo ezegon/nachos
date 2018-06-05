@@ -103,7 +103,7 @@ private:
 public:
 
     /// Initialize a `Thread`.
-    Thread(const char *debugName, unsigned int priority = 2, bool joinable = true);
+    Thread(const char *debugName, unsigned int priority = 2, bool joinable = false);
 
     /// Deallocate a Thread.
     ///

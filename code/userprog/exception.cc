@@ -57,7 +57,7 @@ ExceptionHandler(ExceptionType which)
         switch (type)
         {
             case SC_Halt:
-                DEBUG('a', "Shutdown, initiated by user program.\n");
+                DEBUG('e', "Shutdown, initiated by user program.\n");
                 interrupt->Halt();
                 break;
 
@@ -65,7 +65,9 @@ ExceptionHandler(ExceptionType which)
                 {
                     int fname = machine->ReadRegister(4);
                     char name[256];
+                    ASSERT(fname != NULL);
                     ReadStringFromUser(fname, name, 256);
+                    DEBUG('e',"Creating file with name: %s\n",name);
                     fileSystem->Create(name,0);
                     IncreasePC();
                     break;
@@ -78,7 +80,7 @@ ExceptionHandler(ExceptionType which)
                     OpenFileId id = machine->ReadRegister(6);
                     char *buffer = new char[size];
                     int readLength = 0;
-
+                    DEBUG('e',"Reading file with id %d\n", id);
                     if(id == ConsoleInput) {
                         unsigned i;
                         for(i = 0; i < size; i++)
@@ -87,7 +89,7 @@ ExceptionHandler(ExceptionType which)
                         }
                         WriteBufferToUser((const char*)buffer, from, size);
                         readLength = i;
-                    } else if(id >= 0) {
+                    } else {
                         OpenFile *f = currentThread->GetFile(id);
                         if(f != NULL) {
                             readLength = f->Read(buffer, size);
@@ -107,7 +109,7 @@ ExceptionHandler(ExceptionType which)
                     OpenFileId id = machine->ReadRegister(6);
                     int writeLength = 0;
                     char buffer[size];
-
+                    DEBUG('e',"Writing file with id: %d\n",id);
                     if(id == ConsoleOutput) {
                         unsigned i;
                         ReadBufferFromUser(from, buffer, size);
@@ -134,13 +136,14 @@ ExceptionHandler(ExceptionType which)
                     char name[256];
                     ReadStringFromUser(pname, name, 256);
                     OpenFile *file = fileSystem->Open(name);
-                    OpenFileId fid = 0;
-
+                    OpenFileId fid = -1;
+                    DEBUG('e', "Opening file %s\n", name);
                     if(file != NULL) {
                         fid = currentThread->AddFile(file);
                         if(fid < 0)
                             delete file;
                     }
+                    machine->WriteRegister(2, fid);
                     IncreasePC();
                     break;
                 }
@@ -156,7 +159,7 @@ ExceptionHandler(ExceptionType which)
              case SC_Exit:
                 {
                     int status = machine->ReadRegister(4);
-                    currentThread->RemoveAllFiles();
+                    //currentThread->RemoveAllFiles();
                     currentThread->Finish(status);
                     IncreasePC();
                     break;
@@ -176,20 +179,24 @@ ExceptionHandler(ExceptionType which)
                 {
                     int pname = machine->ReadRegister(4);
                     int pargs = machine->ReadRegister(5);
+                    int joinable = machine->ReadRegister(6);
                     char name[256];
                     ASSERT(name != NULL);
                     ReadStringFromUser(pname, name, 256);
+                    DEBUG('e',"Excuting program: %s\n", name);
                     OpenFile *file = fileSystem->Open(name);
                     SpaceId sid = 0;
                     ASSERT(file != NULL);
-                    Thread *t = new Thread(strdup(name));
+                    if(joinable)
+                        Thread *t = new Thread(strdup(name),true);
+                    else
+                        Thread *t = new Thread(strdup(name));
                     AddressSpace *as = new AddressSpace(file);
-                    delete file;
                     t->space = as;
                     sid = t->GetSid();
-                    char **args = SaveArgs(pargs);
-                    t->Fork(InitUserProc, args);
+                    t->Fork(InitUserProc, SaveArgs(pargs));
                     machine->WriteRegister(2, sid);
+                    delete file;
                     IncreasePC();
                     break;
                 }
@@ -222,6 +229,14 @@ void InitUserProc(void *args)
     currentThread->space->InitRegisters();
     currentThread->space->RestoreState();
 
-    WriteArgs((char**) args);
+    int argc = WriteArgs((char **) args);
+    int argv = (machine->ReadRegister(STACK_REG)) + 16;
+    machine->WriteRegister(4, argc);
+    char buffer[512];
+    int vAddr;
+    machine->ReadMem(argv, 4, &vAddr);
+    ReadStringFromUser(vAddr, buffer, 512);
+
+    machine->WriteRegister(5, argv);
     machine->Run();
 }

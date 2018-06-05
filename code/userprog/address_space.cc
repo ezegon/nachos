@@ -42,6 +42,19 @@ SwapHeader(noffHeader *noffH)
     noffH->uninitData.inFileAddr  = WordToHost(noffH->uninitData.inFileAddr);
 }
 
+unsigned
+localTranslateAddress(unsigned vAddr, TranslationEntry *pt)
+{
+    ASSERT(pt != NULL);
+
+    unsigned virtualPageN, offset, frame;
+
+    virtualPageN = (unsigned) vAddr / PAGE_SIZE;
+    offset = (unsigned) vAddr % PAGE_SIZE;
+    frame = pt[virtualPageN].physicalPage;
+    return (frame * PAGE_SIZE) + offset;
+}
+
 /// Create an address space to run a user program.
 ///
 /// Load the program from a file `executable`, and set everything up so that
@@ -100,16 +113,6 @@ AddressSpace::AddressSpace(OpenFile *executable)
           // set its pages to be read-only.
     }
 
-    // Zero out the entire address space, to zero the unitialized data
-    // segment and the stack segment.
-    // memset(machine->mainMemory, 0, size);
-
-    for(unsigned i = 0; i < numPages; i++)
-    {
-        DEBUG('a',"Clearing [%d]%d \n", i, pageTable[i].physicalPage);
-        bzero(&(machine->mainMemory[pageTable[i].physicalPage * PAGE_SIZE]), PAGE_SIZE);
-    }
-
     DEBUG('a',"Pagetable clearing finished \n");
 
     // Then, copy in the code and data segments into memory.
@@ -125,15 +128,8 @@ AddressSpace::AddressSpace(OpenFile *executable)
         DEBUG('a', "Initializing code segment.\n");
         for (int j = 0; j < noffH.code.size; j++)
         {
-            char c;
-            executable->ReadAt(&c, 1, j + noffH.code.inFileAddr);
-            int vAddr = noffH.code.virtualAddr + j;
-            int virtualPageN = vAddr / PAGE_SIZE;
-            int offset = vAddr % PAGE_SIZE;
-            int physicalPageN = pageTable[virtualPageN].physicalPage;
-            int pPage = physicalPageN * PAGE_SIZE;
-            int physicalAddr = pPage + offset;
-            machine->mainMemory[physicalAddr] = c;
+            executable->ReadAt(&(machine->mainMemory[localTranslateAddress(noffH.code.virtualAddr + j, pageTable)]),
+                                1, noffH.code.inFileAddr + j);
         }
     }
 
@@ -148,15 +144,8 @@ AddressSpace::AddressSpace(OpenFile *executable)
         DEBUG('a', "Initializing data segment.\n");
         for(int j = 0; j < noffH.initData.size; j++)
         {
-            char c;
-            executable->ReadAt(&c, 1, j + noffH.initData.inFileAddr);
-            int vAddr = noffH.initData.virtualAddr + j;
-            int virtualPageN = vAddr / PAGE_SIZE;
-            int offset = vAddr % PAGE_SIZE;
-            int physicalPageN = pageTable[virtualPageN].physicalPage;
-            int pPage = physicalPageN * PAGE_SIZE;
-            int physicalAddr = pPage + offset;
-            machine->mainMemory[physicalAddr] = c;
+            executable->ReadAt(&(machine->mainMemory[localTranslateAddress(noffH.initData.virtualAddr + j, pageTable)]),
+                                1, noffH.initData.inFileAddr + j);
         }
     }
 }
@@ -166,11 +155,6 @@ AddressSpace::AddressSpace(OpenFile *executable)
 /// Nothing for now!
 AddressSpace::~AddressSpace()
 {
-    for(int i = 0; i < numPages; i++)
-    {
-        DEBUG('a', "Clearing physical table %d\n", pageTable[i].physicalPage);
-        vPages->Clear(pageTable[i].physicalPage);
-    }
     delete [] pageTable;
 }
 

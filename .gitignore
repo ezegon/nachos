@@ -1,6 +1,7 @@
 *.o
 *.bckp
 *.gch
+*.h.gch
 code/network/nachos
 code/userland/filetest
 code/userland/halt
@@ -8,6 +9,9 @@ code/userland/matmult
 code/userland/shell
 code/userland/sort
 code/userland/tiny shell
+code/userland/mk
+code/userland/cat
+code/userland/echo
 code/userland/*.coff
 code/userland/lib/
 code/userland/mips-dec-ultrix42/*

@@ -350,11 +350,14 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
 void
 Thread::Join()
 {
-    ASSERT(willJoin);
-    int joinBuffer;
-    joinPort->Receive(&joinBuffer);
-
-    delete joinPort;
+    //ASSERT(willJoin);
+    if(willJoin)
+    {
+        int joinBuffer;
+        joinPort->Receive(&joinBuffer);
+    
+        delete joinPort;
+    }
 }
 
 int

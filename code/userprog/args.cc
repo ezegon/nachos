@@ -13,55 +13,60 @@ const unsigned MAX_ARG_LENGTH = 128;
 void
 ReadStringFromUser(int userAddress, char *outString, unsigned maxByteCount)
 {
-    unsigned i = 0;
+    ASSERT(outString != NULL);
+    ASSERT(userAddress != 0);
+    int i = 0;
     int c;
     do
     {
         machine->ReadMem(userAddress + i, 1, &c);
-        *(outString + i) = c;
+        outString[i] = c;
         i++;
-    } while ( c != '\0' && i < maxByteCount);
+    } while ( (c != '\0') && (i < maxByteCount-1));
+    outString[i-1] = '\0';
 }
 
 void
 WriteStringToUser(const char *string, int userAddress)
 {
-    unsigned i = 0;
-    while (string[i] != '\0')
+    ASSERT(string != NULL);
+    ASSERT(userAddress != 0);
+    int i = 0;
+    do
     {
-        machine->WriteMem(userAddress + i, 1, string[i]); // Tendria que castear aca?
+        machine->WriteMem(userAddress + i, 1, string[i]);
         i++;
-    }
-    machine->WriteMem(userAddress + i, 1, '\0'); // Y aca?
+    } while (string[i] != '\0');
+    machine->WriteMem(userAddress + i, 1, '\0');
 }
 
 void
 ReadBufferFromUser(int userAddress, char *outBuffer, unsigned byteCount)
 {
-    unsigned i = 0;
-    int c;
-    do
+    ASSERT(outBuffer != NULL);
+    ASSERT(userAddress != 0);
+    int c, i;
+    for(i = 0; i < byteCount; i++)
     {
         machine->ReadMem(userAddress + i, 1, &c);
-        outBuffer[i]= c;
-        i += 1;
-    } while (i <= byteCount);
+        outBuffer[i] = c;
+    }
 }
 
 void
 WriteBufferToUser(const char *buffer, int userAddress, unsigned byteCount)
 {
-    unsigned size = sizeof(buffer) / sizeof(char);
-    unsigned i = 0;
-    while (size >= 1)
+    ASSERT(buffer != NULL);
+    ASSERT(userAddress != 0);
+    int i = 0;
+    do
     {
-        machine->WriteMem(userAddress + i, 1, buffer[i]); // Tendria que castear aca?
-        i += 1;
-        size -= 1;
-    };
+        machine->WriteMem(userAddress + i, 1, buffer[i]);
+        i++;
+    } while(i < byteCount);
 }
 
-void
+int
 WriteArgs(char **args)
 {
     ASSERT(args != NULL);
@@ -85,9 +90,6 @@ WriteArgs(char **args)
     sp -= sp % 4;     // Align the stack to a multiple of four.
     sp -= i * 4 + 4;  // Make room for the array and the trailing NULL.
 
-    machine->WriteRegister(4, i);
-    machine->WriteRegister(5, sp);
-
     for (unsigned j = 0; j < i; j++)
         // Save the address of the j-th argument counting from the end down
         // to the beginning.
@@ -97,6 +99,8 @@ WriteArgs(char **args)
 
     machine->WriteRegister(STACK_REG, sp);
     delete args;  // Free the array.
+
+    return i;
 }
 
 char **
