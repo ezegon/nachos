@@ -187,10 +187,11 @@ ExceptionHandler(ExceptionType which)
                     OpenFile *file = fileSystem->Open(name);
                     SpaceId sid = 0;
                     ASSERT(file != NULL);
+                    Thread *t;
                     if(joinable)
-                        Thread *t = new Thread(strdup(name),true);
+                        t = new Thread(strdup(name),true);
                     else
-                        Thread *t = new Thread(strdup(name));
+                        t = new Thread(strdup(name));
                     AddressSpace *as = new AddressSpace(file);
                     t->space = as;
                     sid = t->GetSid();
